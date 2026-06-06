@@ -14,7 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         
-        // AJOUTEZ LE MIDDLEWARE CORS ICI
+        
         $middleware->append(HandleCors::class);
 
         $middleware->validateCsrfTokens(except: [
