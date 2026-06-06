@@ -26,7 +26,6 @@ RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
 # 6. Vider le cache de configuration (Maintenant le fichier artisan existe !)
 RUN php artisan config:clear
-RUN php artisan db:seed --class=AdminSeeder --force
 # 7. Donner les droits d'accès à Laravel pour les fichiers de cache
 RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
