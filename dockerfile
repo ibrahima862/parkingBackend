@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
 
 # Installer les extensions PHP indispensables pour Laravel
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+RUN php artisan config:clear
 
 # Installer Composer de manière sécurisée
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
