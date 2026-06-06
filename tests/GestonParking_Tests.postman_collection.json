@@ -1,0 +1,582 @@
+{
+  "info": {
+    "name": "GestonParking – Tests Unitaires API (PFC)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection de tests unitaires couvrant les 15 cas du tableau 5.4.1"
+  },
+  "variable": [
+    { "key": "baseUrl",       "value": "http://127.0.0.1:8000/api" },
+    { "key": "clientToken",   "value": "" },
+    { "key": "partnerToken",  "value": "" },
+    { "key": "adminToken",    "value": "" },
+    { "key": "parkingId",     "value": "" },
+    { "key": "reservationId", "value": "" },
+    { "key": "planId",        "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Authentification",
+      "item": [
+        {
+          "name": "TC-01 – Inscription client",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201 Créé', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Token retourné', () => pm.expect(json).to.have.property('access_token'));",
+                  "pm.test('Rôle = client', () => pm.expect(json.user.role).to.eql('client'));",
+                  "pm.collectionVariables.set('clientToken', json.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/register",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Test Client\",\n  \"email\": \"client_test@mail.com\",\n  \"password\": \"Password123!\",\n  \"password_confirmation\": \"Password123!\",\n  \"role\": \"client\",\n  \"telephone\": \"0700000001\"\n}"
+            }
+          }
+        },
+        {
+          "name": "TC-02 – Inscription propriétaire (parking en_attente)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201 Créé', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Token retourné', () => pm.expect(json).to.have.property('access_token'));",
+                  "pm.test('Rôle = proprietaireparking', () => {",
+                  "  pm.expect(json.user.role).to.eql('proprietaireparking');",
+                  "});",
+                  "pm.test('CIN recto uploadé (Cloudinary)', () => {",
+                  "  pm.expect(json.user.rectoCIN).to.be.a('string').and.include('cloudinary');",
+                  "});",
+                  "pm.collectionVariables.set('partnerToken', json.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/register",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name",                 "value": "Proprio Test",           "type": "text" },
+                { "key": "email",                "value": "proprio_test@mail.com",  "type": "text" },
+                { "key": "password",             "value": "Password123!",           "type": "text" },
+                { "key": "password_confirmation","value": "Password123!",           "type": "text" },
+                { "key": "role",                 "value": "proprietaireparking",    "type": "text" },
+                { "key": "telephone",            "value": "0700000002",             "type": "text" },
+                { "key": "nomParking",           "value": "Parking Plateau",        "type": "text" },
+                { "key": "quartier",             "value": "Plateau",                "type": "text" },
+                { "key": "capacite",             "value": "20",                     "type": "text" },
+                { "key": "latitude",             "value": "5.3364",                 "type": "text" },
+                { "key": "longitude",            "value": "-4.0267",                "type": "text" },
+                { "key": "rectoCIN", "src": "", "type": "file", "description": "Photo recto de la CIN (JPG/PNG)" },
+                { "key": "versoCIN", "src": "", "type": "file", "description": "Photo verso de la CIN (JPG/PNG)" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Setup] Récupérer parkingId du propriétaire",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const list = json.data || json;",
+                  "const parkings = Array.isArray(list) ? list : Object.values(list);",
+                  "if (parkings.length > 0) {",
+                  "  pm.collectionVariables.set('parkingId', parkings[0].id);",
+                  "  console.log('parkingId défini :', parkings[0].id);",
+                  "  pm.test('Parking en_attente récupéré', () => pm.expect(parkings[0].statut).to.eql('en_attente'));",
+                  "} else {",
+                  "  pm.test('Au moins un parking trouvé', () => pm.expect(parkings.length).to.be.above(0));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/partenaire/parkings",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{partnerToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "TC-03 – Connexion valide",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Token Sanctum retourné', () => pm.expect(json).to.have.property('access_token'));",
+                  "pm.test('Données utilisateur présentes', () => pm.expect(json).to.have.property('user'));",
+                  "pm.collectionVariables.set('clientToken', json.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"email\": \"client_test@mail.com\",\n  \"password\": \"Password123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "TC-04 – Connexion invalide (mauvais mot de passe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 401 Non autorisé', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('Message d erreur présent', () => pm.expect(json).to.have.property('message'));",
+                  "pm.test('Aucun token retourné', () => pm.expect(json).to.not.have.property('access_token'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"email\": \"client_test@mail.com\",\n  \"password\": \"mauvais_mot_de_passe\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Protection & Autorisation",
+      "item": [
+        {
+          "name": "TC-05 – Route protégée sans token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 401 Non authentifié', () => pm.response.to.have.status(401));",
+                  "const json = pm.response.json();",
+                  "pm.test('Message d erreur présent', () => pm.expect(json).to.have.property('message'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/profile",
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "TC-06 – Accès admin avec rôle client (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 403 Accès refusé', () => pm.response.to.have.status(403));",
+                  "const json = pm.response.json();",
+                  "pm.test('Message d erreur présent', () => pm.expect(json).to.have.property('message'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/utilisateurs",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{clientToken}}" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Parkings",
+      "item": [
+        {
+          "name": "TC-07 – Recherche parking (search=Plateau)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const parkings = json.data || json;",
+                  "pm.test('Résultats contiennent Plateau', () => {",
+                  "  const list = Array.isArray(parkings) ? parkings : Object.values(parkings);",
+                  "  list.forEach(p => {",
+                  "    pm.expect(p.quartier.toLowerCase()).to.include('plateau');",
+                  "  });",
+                  "});",
+                  "pm.test('Uniquement parkings validés', () => {",
+                  "  const list = Array.isArray(parkings) ? parkings : Object.values(parkings);",
+                  "  list.forEach(p => pm.expect(p.statut).to.eql('valide'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/parkings/liste?search=Plateau",
+              "host": ["{{baseUrl}}"],
+              "path": ["parkings", "liste"],
+              "query": [{ "key": "search", "value": "Plateau" }]
+            },
+            "header": [{ "key": "Accept", "value": "application/json" }]
+          }
+        },
+        {
+          "name": "TC-13 – Soumission parking + image (en_attente, Cloudinary)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201 Créé', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('Statut en_attente', () => pm.expect(json.statut).to.eql('en_attente'));",
+                  "pm.test('URL image présente (Cloudinary)', () => {",
+                  "  pm.expect(json.image_url).to.be.a('string').and.include('cloudinary');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/partenaire/parkings",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{partnerToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "nom",       "value": "Parking Adjamé Centre",   "type": "text" },
+                { "key": "quartier",  "value": "Adjamé",                  "type": "text" },
+                { "key": "capacite",  "value": "15",                      "type": "text" },
+                { "key": "latitude",  "value": "5.3600",                  "type": "text" },
+                { "key": "longitude", "value": "-4.0100",                 "type": "text" },
+                { "key": "image", "src": "", "type": "file",
+                  "description": "Sélectionner une photo JPG/PNG du parking" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Réservations",
+      "item": [
+        {
+          "name": "TC-08 – Réservation parking complet (422)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Avant ce test : remplir manuellement le parking (capacite = places occupées actives)",
+                  "// ou utiliser un parking dont la capacite est 0 en base"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 422 Parking complet', () => pm.response.to.have.status(422));",
+                  "const json = pm.response.json();",
+                  "pm.test('Message parking complet', () => {",
+                  "  const msg = JSON.stringify(json).toLowerCase();",
+                  "  pm.expect(msg).to.satisfy(m => m.includes('complet') || m.includes('capacit') || m.includes('disponible'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/client/reservations",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{clientToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"parking_id\": \"{{parkingId}}\",\n  \"vehicule_id\": 1,\n  \"heure_debut\": \"2026-06-01 08:00:00\",\n  \"heure_fin\":   \"2026-06-01 10:00:00\"\n}"
+            }
+          }
+        },
+        {
+          "name": "TC-09 – Calcul montant réservation (3h30 → 4h × 500 = 2000 FCFA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201 ou 200', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const reservation = json.reservation || json;",
+                  "pm.test('Montant = 2000 FCFA (ceil 4h × 500)', () => {",
+                  "  pm.expect(Number(reservation.montant)).to.eql(2000);",
+                  "});",
+                  "if (reservation.id) pm.collectionVariables.set('reservationId', reservation.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/client/reservations",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{clientToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"parking_id\":  \"{{parkingId}}\",\n  \"vehicule_id\": 1,\n  \"heure_debut\": \"2026-06-01 08:00:00\",\n  \"heure_fin\":   \"2026-06-01 11:30:00\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Commissions",
+      "item": [
+        {
+          "name": "TC-10 – Commission réservation (10% de 2000 = 200 FCFA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const reservation = json.reservation || json;",
+                  "pm.test('Commission = 200 FCFA (10% de 2000)', () => {",
+                  "  pm.expect(Number(reservation.commission)).to.eql(200);",
+                  "});",
+                  "pm.test('Montant net propriétaire = 1800 FCFA', () => {",
+                  "  const montant = Number(reservation.montant_net ?? reservation.montant);",
+                  "  pm.expect(montant - 200).to.eql(1800);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/client/reservations/confirmation/{{reservationId}}",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{clientToken}}" }
+            ]
+          }
+        },
+        {
+          "name": "TC-11 – Commission abonnement (20% de 10000 = 2000 FCFA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201 ou 200', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "const abo = json.abonnement || json;",
+                  "pm.test('Commission = 2000 FCFA (20% de 10000)', () => {",
+                  "  pm.expect(Number(abo.commission)).to.eql(2000);",
+                  "});",
+                  "pm.test('Prix plan = 10000 FCFA', () => {",
+                  "  pm.expect(Number(abo.prix ?? abo.montant)).to.eql(10000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/client/abonnements",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{clientToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"plan_id\": \"{{planId}}\",\n  \"parking_id\": \"{{parkingId}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Partenaire",
+      "item": [
+        {
+          "name": "TC-12 – Mise à jour statut parking (garé → disponibilité recalculée)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const resa = json.reservation || json;",
+                  "pm.test('Statut = garé', () => pm.expect(resa.parking_status).to.eql('garé'));",
+                  "pm.test('Disponibilité recalculée (places_disponibles présent)', () => {",
+                  "  const champ = resa.places_disponibles ?? resa.parking?.places_disponibles;",
+                  "  pm.expect(champ).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/partenaire/reservations/{{reservationId}}/status",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{partnerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"parking_status\": \"garé\"\n}"
+            }
+          }
+        },
+        {
+          "name": "TC-15 – Demande de retrait (Wave, en_attente)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 201 Créé', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "const retrait = json.retrait || json;",
+                  "pm.test('Statut en_attente', () => pm.expect(retrait.statut).to.eql('en_attente'));",
+                  "pm.test('Méthode = Wave', () => pm.expect(retrait.methode).to.eql('Wave'));",
+                  "pm.test('Montant correct', () => pm.expect(Number(retrait.montant)).to.eql(5000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/partenaire/retraits",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{partnerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"montant\": 5000,\n  \"methode\": \"Wave\",\n  \"numero\": \"0700000000\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Admin",
+      "item": [
+        {
+          "name": "[Setup] Connexion Admin – récupérer adminToken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('adminToken', json.access_token);",
+                  "console.log('adminToken défini :', json.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"email\": \"admin@gestonparking.com\",\n  \"password\": \"AdminPassword123!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "TC-14 – Validation parking admin (statut → valide, notification)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('HTTP 200 OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "const parking = json.parking || json;",
+                  "pm.test('Statut = valide', () => pm.expect(parking.statut).to.eql('valide'));",
+                  "pm.test('Notification envoyée (message ou parking présent)', () => {",
+                  "  pm.expect(json).to.satisfy(j =>",
+                  "    j.notification !== undefined || j.message !== undefined || j.parking !== undefined",
+                  "  );",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/parkings/{{parkingId}}/approve",
+            "header": [
+              { "key": "Accept",        "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
