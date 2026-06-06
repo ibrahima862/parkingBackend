@@ -63,7 +63,8 @@ Route::post('/paytech/webhook', [AbonnementController::class, 'handleWebhook'])-
 Route::get('/payment-bridge', function (Request $request) {
     $id = $request->id;
     $frontendIp = "http://localhost:5173";
-    if ($request->has('cancel')) return redirect($frontendIp . "/booking/cancel");
+    if ($request->has('cancel'))
+        return redirect($frontendIp . "/booking/cancel");
     return redirect($frontendIp . "/booking/success?id=" . $id);
 });
 
@@ -97,36 +98,36 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/reservations', [BookingController::class, 'store']);
         Route::post('/reservations/{id}/annuler', [BookingController::class, 'destroy']);
         Route::get('/reservations/confirmation/{reservation}', [BookingController::class, 'confirmation'])->name('reservation.confirmation');
-        
+
         Route::apiResource('vehicules', VehiculeController::class)->except(['show', 'update']);
         Route::patch('/vehicules/{vehicule}/set-main', [VehiculeController::class, 'setMain']);
-        
+
         Route::post('/reports', [ReportController::class, 'store']);
         Route::post('/avis', [AvisController::class, 'store']);
         Route::post('/abonnements', [AbonnementController::class, 'store']);
         Route::get('/abonnements/confirmation/{abonnement}', [AbonnementController::class, 'confirmation']);
-        
+
         // Devenir partenaire
         Route::post('/become-partner-parking', [ParkingController::class, 'addParkingToBecomePartner']);
     });
 
-   /* --- ESPACE PROPRIÉTAIRE / PARTENAIRE --- */
-Route::middleware([IsPartner::class])->prefix('partenaire')->group(function () {
-    Route::get('/analytics', [PartnerParkingController::class, 'getDashboardStats']);
-    Route::get('/billing', [BillingController::class, 'index']);
-    Route::get('/subscriptions', [PartnerSubscriptionsController::class, 'index']);
-    
-    // 1. Les routes pour la ressource Parking (Gérées proprement)
-    Route::get('/parkings', [PartnerParkingController::class, 'index']);
-    Route::post('/parkings', [ParkingController::class, 'store']);
-    Route::get('/parkings/{id}', [PartnerParkingController::class, 'show']); 
-    Route::patch('/parkings/{id}', [PartnerParkingController::class, 'update']);
-    // 2. Le reste de tes routes
-    Route::get('/reservations', [PartnerReservationController::class, 'index']);
-    Route::patch('/reservations/{id}/status', [PartnerReservationController::class, 'updateStatus']);
-    Route::post('/retraits', [RetraitController::class, 'store']);
-    Route::apiResource('plans', PlanController::class);
-});
+    /* --- ESPACE PROPRIÉTAIRE / PARTENAIRE --- */
+    Route::middleware([IsPartner::class])->prefix('partenaire')->group(function () {
+        Route::get('/analytics', [PartnerParkingController::class, 'getDashboardStats']);
+        Route::get('/billing', [BillingController::class, 'index']);
+        Route::get('/subscriptions', [PartnerSubscriptionsController::class, 'index']);
+
+        // 1. Les routes pour la ressource Parking (Gérées proprement)
+        Route::get('/parkings', [PartnerParkingController::class, 'index']);
+        Route::post('/parkings', [ParkingController::class, 'store']);
+        Route::get('/parkings/{id}', [PartnerParkingController::class, 'show']);
+        Route::patch('/parkings/{id}', [PartnerParkingController::class, 'update']);
+        // 2. Le reste de tes routes
+        Route::get('/reservations', [PartnerReservationController::class, 'index']);
+        Route::patch('/reservations/{id}/status', [PartnerReservationController::class, 'updateStatus']);
+        Route::post('/retraits', [RetraitController::class, 'store']);
+        Route::apiResource('plans', PlanController::class);
+    });
 
     /* --- ESPACE ADMIN --- */
     Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {
@@ -135,13 +136,13 @@ Route::middleware([IsPartner::class])->prefix('partenaire')->group(function () {
         Route::patch('/utilisateurs/{id}/toggle', [AdminUserController::class, 'toggleStatus']);
         Route::get('/partenaires', [AdminPartenaireController::class, 'index']);
         Route::get('/pending-proprios', [AdminParkingController::class, 'getPendingProprios']);
-        Route::patch('/users/{user}/approve', [AdminParkingController::class, 'approveUser']);
+        Route::patch('/users/{id}/approve', [AdminParkingController::class, 'approveUser']);
         Route::delete('/users/{id}/desapprove', [AdminParkingController::class, 'desapproveUser']);
 
         // Gestion Parkings
         Route::get('/parkings', [AdminParkingController::class, 'getParkings']);
         Route::get('/pending-parkings', [AdminParkingController::class, 'index']);
-        Route::patch('/parkings/{parking}/approve', [AdminParkingController::class, 'approveParking']);
+        Route::patch('/parkings/{id}/approve', [AdminParkingController::class, 'approveParking']);
         Route::delete('/parkings/{id}/desapprove', [AdminParkingController::class, 'rejectParking']);
         // Finance & Stats
         Route::get('/stats-globales', [AdminParkingController::class, 'getGlobalStats']);

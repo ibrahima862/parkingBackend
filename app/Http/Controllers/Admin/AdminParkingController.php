@@ -19,7 +19,7 @@ class AdminParkingController extends Controller
      */
     public function index()
     {
-        $pendingParkings = Parking::with('user','services','plans')
+        $pendingParkings = Parking::with('user', 'services', 'plans')
             ->where('statut', 'en_attente')
             ->orderBy('created_at', 'desc')
             ->get();
@@ -44,14 +44,18 @@ class AdminParkingController extends Controller
     /**
      * Approuver un utilisateur pour qu'il devienne propriétaire actif
      */
-    public function approveUser(User $user)
+    public function approveUser($id)
     {
+        // Récupère l'utilisateur ou renvoie une erreur 404 proprement
+        $user = User::findOrFail($id);
+
         $user->update(['is_approved' => true]);
 
         return response()->json([
             'message' => "L'utilisateur {$user->name} est désormais un propriétaire approuvé."
         ]);
     }
+
     public function desapproveUser($id)
     {
         $user = User::find($id);
@@ -77,59 +81,61 @@ class AdminParkingController extends Controller
     /**
      * Valider un parking pour le rendre public
      */
-    public function approveParking(Request $request, Parking $parking)
-    {
-        // 1. Validation des données reçues du GeoModal
-        $validated = $request->validate([
-            'latitude' => 'required|numeric|between:-90,90',
-            'longitude' => 'required|numeric|between:-180,180',
-        ]);
-
-        // 2. Mise à jour avec les coordonnées validées/corrigées par l'admin
-        $parking->update([
-            'statut' => 'valide',
-            'latitude' => $validated['latitude'],
-            'longitude' => $validated['longitude']
-        ]);
-
-        // 3. Log de l'activité (optionnel : inclure les coordonnées pour l'audit)
-        Activity::log(
-            'approve',
-            "Parking {$parking->nom} validé (Lat: {$validated['latitude']}, Lng: {$validated['longitude']})",
-            auth()->user()->name
-        );
-
-        return response()->json([
-            'message' => "Le parking {$parking->nom} est maintenant visible par les clients avec sa position validée."
-        ]);
-    }
-    public function rejectParking($id)
+    public function approveParking(Request $request, $id)
 {
-    // 1. Utiliser findOrFail pour renvoyer une 404 automatiquement si l'ID n'existe pas
+    // Récupère le parking ou renvoie une erreur 404 proprement
     $parking = Parking::findOrFail($id);
 
-    // 2. Vérifier si le parking n'est pas déjà traité (optionnel)
-    if ($parking->statut === 'rejete') {
-        return response()->json(['message' => 'Ce parking est déjà refusé.'], 400);
-    }
+    // 1. Validation des données reçues du GeoModal
+    $validated = $request->validate([
+        'latitude' => 'required|numeric|between:-90,90',
+        'longitude' => 'required|numeric|between:-180,180',
+    ]);
 
-    // 3. Mise à jour et suppression (SoftDelete)
-    $parking->update(['statut' => 'rejete']);
-    $parking->delete();
+    // 2. Mise à jour avec les coordonnées validées/corrigées par l'admin
+    $parking->update([
+        'statut' => 'valide',
+        'latitude' => $validated['latitude'],
+        'longitude' => $validated['longitude']
+    ]);
 
-    // 4. Log de l'activité
-    // Note : On utilise l'ID ou le nom avant que l'objet ne soit potentiellement altéré
+    // 3. Log de l'activité
     Activity::log(
-        'reject',
-        "Parking #{$parking->id} - {$parking->nom} refusé",
-        auth()->user()->name ?? 'Système'
+        'approve',
+        "Parking {$parking->nom} validé (Lat: {$validated['latitude']}, Lng: {$validated['longitude']})",
+        auth()->user()->name ?? 'Admin'
     );
 
     return response()->json([
-        'status' => 'success',
-        'message' => "Le parking \"{$parking->nom}\" a été refusé avec succès."
+        'message' => "Le parking {$parking->nom} est maintenant visible par les clients avec sa position validée."
     ]);
-}
+}    public function rejectParking($id)
+    {
+        // 1. Utiliser findOrFail pour renvoyer une 404 automatiquement si l'ID n'existe pas
+        $parking = Parking::findOrFail($id);
+
+        // 2. Vérifier si le parking n'est pas déjà traité (optionnel)
+        if ($parking->statut === 'rejete') {
+            return response()->json(['message' => 'Ce parking est déjà refusé.'], 400);
+        }
+
+        // 3. Mise à jour et suppression (SoftDelete)
+        $parking->update(['statut' => 'rejete']);
+        $parking->delete();
+
+        // 4. Log de l'activité
+        // Note : On utilise l'ID ou le nom avant que l'objet ne soit potentiellement altéré
+        Activity::log(
+            'reject',
+            "Parking #{$parking->id} - {$parking->nom} refusé",
+            auth()->user()->name ?? 'Système'
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Le parking \"{$parking->nom}\" a été refusé avec succès."
+        ]);
+    }
     public function getGlobalStats()
     {
         // 1. Chiffre d'Affaires Total (Somme des réservations confirmées)
@@ -166,7 +172,7 @@ class AdminParkingController extends Controller
         $croissance_ca = $ca_mois_dernier > 0
             ? round((($ca_ce_mois - $ca_mois_dernier) / $ca_mois_dernier) * 100)
             : 0;
-        $activities = Activity::where('user_name',auth()->user()->name)->latest()->take(5)->get()->map(function ($a) {
+        $activities = Activity::where('user_name', auth()->user()->name)->latest()->take(5)->get()->map(function ($a) {
             return [
                 'id' => $a->id,
                 'type' => $a->type,
