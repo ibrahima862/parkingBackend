@@ -136,7 +136,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/utilisateurs/{id}/toggle', [AdminUserController::class, 'toggleStatus']);
         Route::get('/partenaires', [AdminPartenaireController::class, 'index']);
         Route::get('/pending-proprios', [AdminParkingController::class, 'getPendingProprios']);
-        Route::patch('/users/{id}/approve', [AdminParkingController::class, 'approveUser']);
+        // Ajoutez ceci tout en haut de routes/api.php, hors du groupe middleware
+        Route::patch('/test-cors-patch', function () {
+            return response()->json(['status' => 'success', 'message' => 'CORS et PATCH fonctionnent!']);
+        });
         Route::delete('/users/{id}/desapprove', [AdminParkingController::class, 'desapproveUser']);
 
         // Gestion Parkings
