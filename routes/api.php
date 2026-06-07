@@ -130,7 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     /* --- ESPACE ADMIN --- */
-    Route::prefix('admin')->group(function () {
+    Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {
         // Gestion Utilisateurs & Partenaires
         Route::get('/utilisateurs', [AdminUserController::class, 'index']);
         Route::patch('/utilisateurs/{id}/toggle', [AdminUserController::class, 'toggleStatus']);

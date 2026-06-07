@@ -4,7 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors; 
-
+use App\Http\Middleware\HandleCorsHeaders;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -12,22 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware) {
-        
-        
-       $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
+  ->withMiddleware(function (Middleware $middleware) {
+    // Utilisez la classe, pas une fonction
+    $middleware->prepend(HandleCorsHeaders::class);
 
-        $middleware->validateCsrfTokens(except: [
-            'api/*', 
-        ]);
-        
-        $middleware->redirectGuestsTo(fn () => response()->json([
-            'success' => false,
-            'message' => 'Non authentifié. Veuillez fournir un token valide.'
-        ], 401));
-        
-        $middleware->statefulApi(); 
-    })
+    $middleware->validateCsrfTokens(except: ['api/*']);
+    $middleware->statefulApi(); 
+})
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
