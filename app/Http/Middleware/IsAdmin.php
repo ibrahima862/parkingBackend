@@ -10,8 +10,13 @@ class IsAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        // On vérifie si l'utilisateur est connecté ET s'il est admin
-        if ($request->user() && $request->user()->role !== 'admin') {
+        // 1. Autoriser systématiquement la requête OPTIONS (CORS Preflight)
+        if ($request->isMethod('OPTIONS')) {
+            return $next($request);
+        }
+
+        // 2. Vérifier l'authentification et le rôle
+        if (!$request->user() || $request->user()->role !== 'admin') {
             return response()->json(['message' => 'Accès réservé aux administrateurs'], 403);
         }
 
